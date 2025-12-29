@@ -6,6 +6,8 @@ import logging
 from app.translate.base import TranslateProvider
 from app.translate.llm_translate_provider import LLMTranslateProvider
 from app.translate.huggingface_provider import HuggingFaceProvider
+from app.translate.ctranslate2_provider import CTranslate2Provider
+from app.translate.deepl_provider import DeepLProvider
 from app.core.provider_router import ProviderRouter
 from app.core.schemas import TranslationResult
 from app.config.settings import Settings
@@ -57,7 +59,26 @@ class TranslateRouter:
     
     def _create_provider(self, provider_name: str, settings: Settings) -> Optional[TranslateProvider]:
         """Create a translation provider instance."""
-        if provider_name == "huggingface":
+        if provider_name == "ctranslate2":
+            try:
+                return CTranslate2Provider(
+                    model_path=settings.ctranslate2_model_path
+                )
+            except Exception as e:
+                logger.warning(f"CTranslate2 provider not available: {e}")
+                return None
+        
+        elif provider_name == "deepl":
+            if not settings.deepl_api_key:
+                logger.warning("DeepL API key not configured")
+                return None
+            try:
+                return DeepLProvider(api_key=settings.deepl_api_key)
+            except Exception as e:
+                logger.warning(f"DeepL provider not available: {e}")
+                return None
+        
+        elif provider_name == "huggingface":
             if not settings.hf_api_token:
                 logger.warning("Hugging Face API token not configured")
                 return None
@@ -75,7 +96,10 @@ class TranslateRouter:
             return LLMTranslateProvider(llm_provider=llm_provider)
         
         else:
-            logger.warning(f"Unknown translation provider: {provider_name}. Only 'huggingface' and 'llm' are supported.")
+            logger.warning(
+                f"Unknown translation provider: {provider_name}. "
+                f"Supported providers: ctranslate2, deepl, huggingface, llm"
+            )
             return None
     
     async def translate(

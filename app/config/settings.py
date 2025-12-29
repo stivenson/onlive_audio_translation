@@ -34,7 +34,13 @@ class Settings(BaseModel):
     questions_model: str = "gpt-4o"
     
     # Translation Provider Chain
-    translate_provider_chain: List[str] = ["huggingface", "llm"]
+    translate_provider_chain: List[str] = ["ctranslate2", "deepl", "huggingface", "llm"]
+    
+    # CTranslate2 (Local Fast Translation)
+    ctranslate2_model_path: str = "models/opus-mt-en-es-ct2"
+    
+    # DeepL
+    deepl_api_key: Optional[str] = None
     
     # Hugging Face
     hf_api_token: Optional[str] = None
@@ -137,6 +143,7 @@ def load_settings() -> Settings:
             if key_lower in [
                 "deepgram_api_key", "openai_api_key", "openai_model",
                 "translation_model_fallback", "summary_model", "questions_model",
+                "ctranslate2_model_path", "deepl_api_key",
                 "hf_api_token", "hf_translation_model", "default_language_hint",
                 "ui_theme", "log_level", "log_file"
             ]:

@@ -96,10 +96,10 @@ class HuggingFaceProvider(TranslateProvider):
             # Clean up and validate
             translated_text = translated_text.strip()
             
-            # If translation failed or returned empty, log warning
+            # If translation failed or returned empty, raise exception
             if not translated_text:
-                logger.warning(f"Empty translation result for text: {text[:50]}...")
-                translated_text = text  # Fallback to original text
+                logger.error(f"Empty translation result for text: {text[:50]}...")
+                raise Exception("Hugging Face returned empty translation")
             
             return TranslationResult(
                 original_text=text,
