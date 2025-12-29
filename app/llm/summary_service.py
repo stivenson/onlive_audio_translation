@@ -78,31 +78,34 @@ class SummaryService:
             if not context_text:
                 return
             
-            # Build prompt
+            # Summary is always in Spanish as per requirements ("la idea general es en español")
+            # Build prompt in Spanish
             if self.current_summary:
                 # Update existing summary
-                prompt = f"""You are maintaining a live summary of a conversation. 
-Here is the current summary:
+                prompt = f"""Eres un asistente que mantiene un resumen en vivo de una conversación. El resumen debe estar en español.
+Aquí está el resumen actual:
 
 {self.current_summary.summary}
 
-Here is new conversation content that has occurred since the last update:
+Aquí está el nuevo contenido de la conversación que ha ocurrido desde la última actualización:
 
 {context_text}
 
-Update the summary to include the new information while maintaining important facts and decisions from the previous summary. 
-Keep it concise but comprehensive. Focus on key points, decisions, and important information.
+Actualiza el resumen para incluir la nueva información mientras mantienes los hechos y decisiones importantes del resumen anterior. 
+Manténlo conciso pero completo. Enfócate en puntos clave, decisiones e información importante.
+Responde SOLO con el resumen actualizado en español, sin texto adicional.
 
-Updated summary:"""
+Resumen actualizado:"""
             else:
                 # Create new summary
-                prompt = f"""Create a concise summary of the following conversation. 
-Focus on key points, decisions, and important information.
+                prompt = f"""Crea un resumen conciso en español de la siguiente conversación. 
+Enfócate en puntos clave, decisiones e información importante.
+Responde SOLO con el resumen en español, sin texto adicional.
 
-Conversation:
+Conversación:
 {context_text}
 
-Summary:"""
+Resumen:"""
             
             # Generate summary
             summary_text = await self.llm_router.generate_text(

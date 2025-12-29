@@ -55,6 +55,17 @@ class TranslationService:
             return
         
         try:
+            # If audio is already in Spanish, just pass through without translation
+            if self.settings.audio_is_spanish:
+                translation = TranslationResult(
+                    original_text=event.text,
+                    translated_text=event.text,
+                    source_language="es",
+                    target_language="es"
+                )
+                await event_bus.publish("translation", translation)
+                return
+            
             # Detect language if not provided
             source_language = event.language
             if not source_language or self.settings.auto_detect_language:

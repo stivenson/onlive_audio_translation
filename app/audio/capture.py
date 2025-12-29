@@ -3,6 +3,7 @@
 import asyncio
 import platform
 import logging
+import unicodedata
 from typing import Optional, Callable, List
 import numpy as np
 
@@ -96,11 +97,31 @@ class AudioCapture:
         system = platform.system()
         devices = self.list_devices()
         
+        def _norm(s: str) -> str:
+            # Lowercase + strip accents for robust matching (e.g. "Mezcla estéreo")
+            s = s.lower()
+            return "".join(
+                ch for ch in unicodedata.normalize("NFKD", s)
+                if not unicodedata.combining(ch)
+            )
+        
         if system == "Windows":
             # On Windows, look for "Stereo Mix" or similar loopback devices
             for device in devices:
-                name = device['name'].lower()
-                if 'stereo mix' in name or 'loopback' in name or 'what u hear' in name:
+                name_raw = device.get("name") or ""
+                name = _norm(name_raw)
+                # Common labels across locales/drivers:
+                # - "Stereo Mix"
+                # - "Mezcla estéreo" (Spanish)
+                # - "What U Hear"
+                if (
+                    "stereo mix" in name
+                    or ("stereo" in name and "mix" in name)
+                    or "mezcla estereo" in name
+                    or ("mezcla" in name and "estereo" in name)
+                    or "what u hear" in name
+                    or "loopback" in name
+                ):
                     logger.info(f"Found loopback device: {device['name']}")
                     return device['index']
             
@@ -126,6 +147,28 @@ class AudioCapture:
         
         return None
     
+    def find_realtek_device(self) -> Optional[int]:
+        """
+        Find Realtek audio device.
+        
+        Returns:
+            Device index or None if not found
+        """
+        if not PYAUDIO_AVAILABLE:
+            return None
+        
+        devices = self.list_devices()
+        
+        # Look for Realtek devices (case-insensitive)
+        for device in devices:
+            name = device['name'].lower()
+            if 'realtek' in name:
+                logger.info(f"Found Realtek device: {device['name']}")
+                return device['index']
+        
+        logger.debug("No Realtek device found.")
+        return None
+    
     def start_capture(self, callback: Callable[[bytes], None]):
         """
         Start capturing audio.
@@ -143,10 +186,12 @@ class AudioCapture:
         self.callback = callback
         self.audio = pyaudio.PyAudio()
         
-        # Try to find loopback device if not specified
+        # Use specified device index, or try to find loopback device if not specified
         device_index = self.device_index
         if device_index is None:
             device_index = self.find_loopback_device()
+        
+        logger.info(f"Using audio device index: {device_index}")
         
         try:
             # Open audio stream
@@ -176,6 +221,14 @@ class AudioCapture:
         
         if self.callback and in_data:
             try:
+                # Log first few chunks to verify audio is being captured
+                if not hasattr(self, '_chunk_count'):
+                    self._chunk_count = 0
+                self._chunk_count += 1
+                
+                if self._chunk_count <= 3 or self._chunk_count % 100 == 0:
+                    logger.debug(f"Audio chunk {self._chunk_count}: {len(in_data)} bytes")
+                
                 self.callback(in_data)
             except Exception as e:
                 logger.error(f"Error in audio callback: {e}")

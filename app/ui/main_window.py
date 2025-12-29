@@ -1,11 +1,18 @@
 """Main application window."""
 
-from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QSplitter, QLabel
+import asyncio
+from PySide6.QtWidgets import (
+    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QSplitter, 
+    QLabel, QMessageBox, QDialog
+)
+from app.ui.audio_device_dialog import AudioDeviceDialog
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor
+import qasync
 
 from app.config.settings import Settings
 from app.ui.controller import AppController
+from app.ui.toolbar import ControlToolbar
 
 
 class MainWindow(QMainWindow):
@@ -21,16 +28,35 @@ class MainWindow(QMainWindow):
     def init_ui(self):
         """Initialize the user interface."""
         self.setWindowTitle("Live Audio Translator")
-        self.setGeometry(100, 100, 1600, 900)
+        # Tamaño optimizado para iPad (1024x600) - menos alta
+        self.setGeometry(100, 100, 1024, 600)
         
         # Central widget
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         
-        # Main horizontal layout with 4 panels
-        main_layout = QHBoxLayout(central_widget)
+        # Main vertical layout
+        main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(5, 5, 5, 5)
         main_layout.setSpacing(5)
+        
+        # Control toolbar
+        self.toolbar = ControlToolbar()
+        self.toolbar.start_requested.connect(self._on_start)
+        self.toolbar.pause_requested.connect(self._on_pause)
+        self.toolbar.resume_requested.connect(self._on_resume)
+        self.toolbar.finalize_requested.connect(self._on_finalize)
+        self.toolbar.clear_requested.connect(self._on_clear)
+        self.toolbar.audio_device_requested.connect(self._on_audio_device)
+        self.toolbar.audio_is_spanish_changed.connect(self._on_audio_is_spanish_changed)
+        # Initialize checkbox state from settings
+        self.toolbar.audio_is_spanish_checkbox.setChecked(self.settings.audio_is_spanish)
+        main_layout.addWidget(self.toolbar)
+        
+        # Panels layout
+        panels_layout = QHBoxLayout()
+        panels_layout.setContentsMargins(0, 0, 0, 0)
+        panels_layout.setSpacing(5)
         
         # Create splitter for resizable panels
         splitter = QSplitter(Qt.Horizontal)
@@ -58,7 +84,8 @@ class MainWindow(QMainWindow):
         # Set equal sizes for panels
         splitter.setSizes([400, 400, 400, 400])
         
-        main_layout.addWidget(splitter)
+        panels_layout.addWidget(splitter)
+        main_layout.addLayout(panels_layout)
         
         # Status bar with provider info
         self.statusBar().showMessage("Ready")
@@ -119,16 +146,250 @@ class MainWindow(QMainWindow):
         if "questions_llm" in status:
             parts.append(f"Questions-Model: {status['questions_llm']['model']}")
         
-        self.status_label.setText(" | ".join(parts) if parts else "Running")
+        status_text = " | ".join(parts) if parts else "Running"
+        if self.controller.is_paused:
+            status_text += " (PAUSED)"
+        self.status_label.setText(status_text)
+    
+    def _on_start(self):
+        """Handle start button click."""
+        async def start_async():
+            try:
+                await self.controller.start()
+                self.toolbar.set_running(True)
+                self.statusBar().showMessage("Services started", 3000)
+            except Exception as e:
+                self.statusBar().showMessage(f"Error: {e}", 5000)
+                QMessageBox.critical(
+                    self,
+                    "Start Error",
+                    f"Failed to start services:\n{str(e)}"
+                )
+        
+        asyncio.ensure_future(start_async())
+    
+    def _on_pause(self):
+        """Handle pause button click."""
+        async def pause_async():
+            try:
+                await self.controller.pause()
+                self.toolbar.set_paused(True)
+                self.statusBar().showMessage("Services paused", 3000)
+            except Exception as e:
+                self.statusBar().showMessage(f"Error: {e}", 5000)
+        
+        asyncio.ensure_future(pause_async())
+    
+    def _on_resume(self):
+        """Handle resume button click."""
+        async def resume_async():
+            try:
+                await self.controller.resume()
+                self.toolbar.set_paused(False)
+                self.statusBar().showMessage("Services resumed", 3000)
+            except Exception as e:
+                self.statusBar().showMessage(f"Error: {e}", 5000)
+        
+        asyncio.ensure_future(resume_async())
+    
+    def _on_finalize(self):
+        """Handle finalize button click."""
+        reply = QMessageBox.question(
+            self,
+            "Finalize Session",
+            "This will stop all services and export the session.\n\nContinue?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply != QMessageBox.Yes:
+            return
+        
+        async def finalize_async():
+            try:
+                folder_path = await self.controller.finalize_session()
+                self.toolbar.set_running(False)
+                self.toolbar.set_paused(False)
+                
+                QMessageBox.information(
+                    self,
+                    "Session Finalized",
+                    f"Session exported successfully to:\n{folder_path}"
+                )
+                self.statusBar().showMessage("Session finalized", 5000)
+            except Exception as e:
+                self.statusBar().showMessage(f"Error: {e}", 5000)
+                QMessageBox.critical(
+                    self,
+                    "Finalize Error",
+                    f"Failed to finalize session:\n{str(e)}"
+                )
+        
+        asyncio.ensure_future(finalize_async())
+    
+    def _on_clear(self):
+        """Handle clear button click."""
+        reply = QMessageBox.question(
+            self,
+            "Clear Session",
+            "This will clear all panels and session data.\n\nAre you sure?",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply != QMessageBox.Yes:
+            return
+        
+        try:
+            self.controller.clear_session()
+            self.clear_all_panels()
+            self.statusBar().showMessage("Session cleared", 3000)
+        except Exception as e:
+            self.statusBar().showMessage(f"Error: {e}", 5000)
+            QMessageBox.critical(
+                self,
+                "Clear Error",
+                f"Failed to clear session:\n{str(e)}"
+            )
+    
+    def clear_all_panels(self):
+        """Clear all panels."""
+        self.panel1.clear_text()
+        self.panel2.clear_text()
+        self.panel3.clear_text()
+        self.panel4.clear_questions()
+    
+    def _on_audio_device(self):
+        """Handle audio device selection button click."""
+        dialog = AudioDeviceDialog(
+            current_device_index=self.settings.audio_device_index,
+            parent=self
+        )
+        
+        if dialog.exec() == QDialog.Accepted:
+            selected_index = dialog.get_selected_device_index()
+            if selected_index is not None:
+                # Update settings
+                self.settings.audio_device_index = selected_index
+                
+                # Save to .env file
+                self._save_audio_device_to_env(selected_index)
+                
+                # Show confirmation
+                device_name = "Desconocido"
+                for device in dialog.devices:
+                    if device['index'] == selected_index:
+                        device_name = device['name']
+                        break
+                
+                self.statusBar().showMessage(
+                    f"Dispositivo de audio seleccionado: {device_name}",
+                    5000
+                )
+                
+                QMessageBox.information(
+                    self,
+                    "Dispositivo seleccionado",
+                    f"Dispositivo de audio configurado:\n{device_name}\n\n"
+                    "La configuración se aplicará la próxima vez que inicies la captura."
+                )
+    
+    def _on_audio_is_spanish_changed(self, is_spanish: bool):
+        """Handle audio is Spanish checkbox change."""
+        self.settings.audio_is_spanish = is_spanish
+        
+        # Save to .env file
+        self._save_audio_is_spanish_to_env(is_spanish)
+        
+        # Show status message
+        if is_spanish:
+            self.statusBar().showMessage(
+                "Modo español activado: El audio será transcrito en español sin traducción",
+                3000
+            )
+        else:
+            self.statusBar().showMessage(
+                "Modo inglés activado: El audio será transcrito en inglés y traducido al español",
+                3000
+            )
+    
+    def _save_audio_device_to_env(self, device_index: int):
+        """Save audio device index to .env file."""
+        from pathlib import Path
+        env_path = Path(".env")
+        
+        # Read existing .env if it exists
+        env_lines = []
+        if env_path.exists():
+            with open(env_path, 'r', encoding='utf-8') as f:
+                env_lines = f.readlines()
+        
+        # Update or add AUDIO_DEVICE_INDEX
+        found = False
+        for i, line in enumerate(env_lines):
+            if line.strip().startswith('AUDIO_DEVICE_INDEX='):
+                env_lines[i] = f'AUDIO_DEVICE_INDEX={device_index}\n'
+                found = True
+                break
+        
+        if not found:
+            env_lines.append(f'AUDIO_DEVICE_INDEX={device_index}\n')
+        
+        # Write back to .env
+        with open(env_path, 'w', encoding='utf-8') as f:
+            f.writelines(env_lines)
+    
+    def _save_audio_is_spanish_to_env(self, is_spanish: bool):
+        """Save audio_is_spanish setting to .env file."""
+        from pathlib import Path
+        env_path = Path(".env")
+        
+        # Read existing .env if it exists
+        env_lines = []
+        if env_path.exists():
+            with open(env_path, 'r', encoding='utf-8') as f:
+                env_lines = f.readlines()
+        
+        # Update or add AUDIO_IS_SPANISH
+        found = False
+        for i, line in enumerate(env_lines):
+            if line.strip().startswith('AUDIO_IS_SPANISH='):
+                env_lines[i] = f'AUDIO_IS_SPANISH={"true" if is_spanish else "false"}\n'
+                found = True
+                break
+        
+        if not found:
+            env_lines.append(f'AUDIO_IS_SPANISH={"true" if is_spanish else "false"}\n')
+        
+        # Write back to .env
+        with open(env_path, 'w', encoding='utf-8') as f:
+            f.writelines(env_lines)
     
     def closeEvent(self, event):
-        """Handle window close event."""
+        """Handle window close event with confirmation."""
+        # Show confirmation dialog
+        reply = QMessageBox.question(
+            self,
+            "Cerrar Aplicación",
+            "¿Estás seguro de que deseas cerrar la aplicación?\n\n"
+            "Si hay una sesión activa, se detendrá.",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply != QMessageBox.Yes:
+            event.ignore()
+            return
+        
+        # Stop services if running
         import asyncio
         try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                loop.create_task(self.controller.stop())
+            if self.controller.is_running:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(self.controller.stop())
         except Exception as e:
             print(f"Error stopping controller: {e}")
+        
         event.accept()
 

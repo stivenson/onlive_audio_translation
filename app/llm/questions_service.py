@@ -75,31 +75,31 @@ class QuestionsService:
             if not context_text:
                 return
             
-            # Build prompt
-            prompt = f"""Based on the following conversation, generate {self.settings.questions_max_count} relevant questions or follow-up statements that would help clarify, deepen understanding, or fill gaps in the discussion.
+            # Build prompt - questions always in Spanish
+            prompt = f"""Basándote en la siguiente conversación, genera {self.settings.questions_max_count} preguntas o réplicas relevantes en español que ayuden a aclarar, profundizar la comprensión o llenar vacíos en la discusión.
 
-For each question, provide:
-1. The question in English
-2. The same question translated to Spanish
-3. A brief reason why this question is relevant
-4. A priority score (0-10) indicating how important/urgent the question is
+Para cada pregunta, proporciona:
+1. La pregunta en español
+2. Una breve razón de por qué esta pregunta es relevante
+3. Una puntuación de prioridad (0-10) que indique qué tan importante/urgente es la pregunta
 
-Conversation:
+Conversación:
 {context_text}
 
-Generate questions in JSON format with this structure:
+Genera las preguntas en formato JSON con esta estructura:
 {{
   "questions": [
     {{
-      "question_en": "Question in English",
+      "question_en": "Pregunta en español",
       "question_es": "Pregunta en español",
-      "reason": "Why this question is relevant",
+      "reason": "Por qué esta pregunta es relevante",
       "priority": 7
     }}
   ]
 }}
 
-Only provide the JSON, no additional text."""
+IMPORTANTE: Todas las preguntas deben estar SOLO en español. Usa el mismo texto en question_en y question_es.
+Solo proporciona el JSON, sin texto adicional."""
             
             # Generate questions using structured output
             from pydantic import BaseModel

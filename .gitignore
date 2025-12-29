@@ -97,3 +97,6 @@ sessions/
 *.app
 *.dmg
 
+# Configuration markers
+.stereo-mix-checked
+

@@ -10,6 +10,7 @@ from app.translate.service import TranslationService
 from app.llm.router import LLMRouter
 from app.llm.summary_service import SummaryService
 from app.llm.questions_service import QuestionsService
+from app.llm.meeting_name_service import MeetingNameService
 from app.core.memory import ConversationMemory
 from app.core.event_bus import event_bus
 from app.core.schemas import TranscriptEvent, TranslationResult, SummaryUpdate, QuestionPair
@@ -44,8 +45,10 @@ class AppController:
         self.summary_service: Optional[SummaryService] = None
         self.questions_service: Optional[QuestionsService] = None
         self.session_manager = SessionManager()
+        self.meeting_name_service: Optional[MeetingNameService] = None
         
         self.is_running = False
+        self.is_paused = False
     
     async def initialize_services(self):
         """Initialize all services."""
@@ -73,6 +76,9 @@ class AppController:
                 memory=self.memory
             )
             
+            # Initialize meeting name service
+            self.meeting_name_service = MeetingNameService(self.summary_llm_router)
+            
             logger.info("All services initialized")
         
         except Exception as e:
@@ -97,11 +103,124 @@ class AppController:
             await self.questions_service.start()
             
             self.is_running = True
+            self.is_paused = False
             logger.info("All services started")
         
         except Exception as e:
             logger.error(f"Failed to start services: {e}")
             await self.stop()
+            raise
+    
+    async def pause(self):
+        """Pause audio capture and processing."""
+        if not self.is_running or self.is_paused:
+            return
+        
+        try:
+            # Stop audio stream but keep resources
+            if self.stt_service and self.stt_service.audio_capture:
+                if self.stt_service.audio_capture.stream:
+                    try:
+                        self.stt_service.audio_capture.stream.stop_stream()
+                    except Exception as e:
+                        logger.warning(f"Error stopping audio stream: {e}")
+                self.stt_service.audio_capture.is_capturing = False
+            
+            self.is_paused = True
+            logger.info("Services paused")
+        except Exception as e:
+            logger.error(f"Failed to pause services: {e}")
+            raise
+    
+    async def resume(self):
+        """Resume audio capture and processing."""
+        if not self.is_running or not self.is_paused:
+            return
+        
+        try:
+            # Resume audio stream
+            if self.stt_service and self.stt_service.audio_capture:
+                if self.stt_service.audio_capture.stream:
+                    try:
+                        self.stt_service.audio_capture.stream.start_stream()
+                        self.stt_service.audio_capture.is_capturing = True
+                    except Exception as e:
+                        logger.error(f"Error resuming audio stream: {e}")
+                        # If stream is broken, restart capture
+                        self.stt_service.audio_capture.start_capture(
+                            lambda data: self.stt_service.audio_chunker.add_audio(data)
+                        )
+                else:
+                    # Stream was closed, restart capture
+                    self.stt_service.audio_capture.start_capture(
+                        lambda data: self.stt_service.audio_chunker.add_audio(data)
+                    )
+            
+            self.is_paused = False
+            logger.info("Services resumed")
+        except Exception as e:
+            logger.error(f"Failed to resume services: {e}")
+            raise
+    
+    async def finalize_session(self) -> str:
+        """
+        Finalize current session: infer meeting name, export, and stop services.
+        
+        Returns:
+            Path to exported folder
+        """
+        if not self.is_running:
+            logger.warning("Cannot finalize: services not running")
+            return ""
+        
+        try:
+            # Get current summary for meeting name inference
+            current_summary = None
+            if self.summary_service and self.summary_service.current_summary:
+                current_summary = self.summary_service.current_summary.summary
+            
+            # Infer meeting name
+            meeting_name = await self.meeting_name_service.infer_meeting_name(
+                memory=self.memory,
+                current_summary=current_summary
+            )
+            
+            # Get session data
+            session_data = self.session_manager
+            
+            # Export to folder
+            folder_path = self.session_manager.exporter.export_to_folder(
+                meeting_name=meeting_name,
+                transcripts=session_data.transcripts,
+                translations=session_data.translations,
+                summaries=session_data.summaries,
+                questions=session_data.questions
+            )
+            
+            # Stop services
+            await self.stop()
+            
+            logger.info(f"Session finalized and exported to: {folder_path}")
+            return str(folder_path)
+            
+        except Exception as e:
+            logger.error(f"Failed to finalize session: {e}", exc_info=True)
+            # Still stop services even if export fails
+            await self.stop()
+            raise
+    
+    def clear_session(self):
+        """Clear all session data and memory."""
+        try:
+            # Clear memory
+            self.memory.clear()
+            
+            # Clear session manager
+            self.session_manager.clear()
+            
+            logger.info("Session cleared")
+        except Exception as e:
+            logger.error(f"Failed to clear session: {e}")
             raise
     
     async def stop(self):
@@ -110,6 +229,7 @@ class AppController:
             return
         
         self.is_running = False
+        self.is_paused = False
         
         # Stop services in reverse order
         if self.questions_service:

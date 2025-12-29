@@ -227,4 +227,70 @@ class SessionExporter:
         
         logger.info(f"Exported session to {filepath}")
         return filepath
+    
+    def export_to_folder(
+        self,
+        meeting_name: str,
+        transcripts: List[TranscriptEvent],
+        translations: List[TranslationResult],
+        summaries: List[SummaryUpdate],
+        questions: List[QuestionPair]
+    ) -> Path:
+        """
+        Export session data to a folder with individual TXT files.
+        
+        Args:
+            meeting_name: Name of the meeting (will be sanitized)
+            transcripts: List of transcript events
+            translations: List of translation results
+            summaries: List of summary updates
+            questions: List of question pairs
+            
+        Returns:
+            Path to the created folder
+        """
+        # Sanitize meeting name (remove invalid chars for folder name)
+        import re
+        safe_name = re.sub(r'[<>:"/\\|?*]', '', meeting_name)
+        safe_name = safe_name.strip()
+        
+        # Create folder name with timestamp
+        timestamp = datetime.now().strftime("%d%m%Y_%H%M")
+        folder_name = f"{safe_name}_{timestamp}"
+        folder_path = self.export_dir / folder_name
+        folder_path.mkdir(exist_ok=True)
+        
+        # Export transcription.txt
+        transcription_path = folder_path / "transcription.txt"
+        with open(transcription_path, 'w', encoding='utf-8') as f:
+            for transcript in transcripts:
+                speaker = transcript.speaker_id or "Unknown"
+                f.write(f"[{speaker}]: {transcript.text}\n")
+        
+        # Export translation.txt
+        translation_path = folder_path / "translation.txt"
+        with open(translation_path, 'w', encoding='utf-8') as f:
+            for translation in translations:
+                f.write(f"{translation.translated_text}\n")
+        
+        # Export summary.txt (use latest summary)
+        summary_path = folder_path / "summary.txt"
+        with open(summary_path, 'w', encoding='utf-8') as f:
+            if summaries:
+                # Get the latest summary
+                latest_summary = max(summaries, key=lambda s: s.last_updated)
+                f.write(latest_summary.summary)
+            else:
+                f.write("No summary available.\n")
+        
+        # Export questions.txt
+        questions_path = folder_path / "questions.txt"
+        with open(questions_path, 'w', encoding='utf-8') as f:
+            for question in questions:
+                f.write(f"EN: {question.question_en}\n")
+                f.write(f"ES: {question.question_es}\n")
+                f.write("\n")
+        
+        logger.info(f"Exported session to folder: {folder_path}")
+        return folder_path
 

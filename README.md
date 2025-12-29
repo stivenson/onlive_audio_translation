@@ -16,7 +16,22 @@ Aplicación de escritorio Python para traducción y análisis en tiempo real de 
 
 - Python 3.10 o superior
 - Windows 11 o macOS
-- Para macOS: Necesitas instalar [BlackHole](https://github.com/ExistentialAudio/BlackHole) para captura de audio del sistema
+- **Para Windows**: Necesitas habilitar "Stereo Mix" o un dispositivo de loopback para capturar el audio del sistema (ver instrucciones abajo)
+- **Para macOS**: Necesitas instalar [BlackHole](https://github.com/ExistentialAudio/BlackHole) para captura de audio del sistema
+
+### Configuración de Audio en Windows
+
+Para capturar el audio del sistema en Windows, necesitas habilitar "Stereo Mix":
+
+1. **Clic derecho en el ícono de volumen** en la barra de tareas
+2. Selecciona **"Sonidos"** o **"Configuración de sonido"**
+3. Ve a la pestaña **"Grabación"**
+4. **Clic derecho en el espacio vacío** y marca **"Mostrar dispositivos deshabilitados"**
+5. Busca **"Mezcla estéreo"** o **"Stereo Mix"**
+6. **Clic derecho** en "Mezcla estéreo" y selecciona **"Habilitar"**
+7. **Clic derecho** nuevamente y selecciona **"Establecer como dispositivo predeterminado"**
+
+**Nota**: Si no ves "Stereo Mix", tu tarjeta de audio puede no soportarlo. En ese caso, puedes usar software como [VB-Audio Virtual Cable](https://vb-audio.com/Cable/) para crear un dispositivo de loopback virtual.
 
 ## Instalación
 
@@ -29,11 +44,19 @@ cd traducción_on_live_audio
 2. Crea un entorno virtual:
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # En Windows: .venv\Scripts\activate
 ```
 
-3. Instala las dependencias:
+3. Activa el entorno virtual e instala las dependencias:
+
+**Windows (PowerShell):**
+```powershell
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+**macOS/Linux:**
 ```bash
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -86,9 +109,75 @@ Esto te permite optimizar costos usando modelos más económicos para tareas sim
 
 ## Uso
 
-```bash
+### Windows (PowerShell)
+
+**Recomendado - Usar el script de ejecución:**
+```powershell
+.\run.ps1
+```
+
+Este script automáticamente:
+- Activa el entorno virtual (`.venv`)
+- Verifica que estás usando el Python correcto
+- Ejecuta la aplicación
+
+**Alternativa - Ejecución manual:**
+```powershell
+# 1. Activar el entorno virtual
+.\.venv\Scripts\Activate.ps1
+
+# 2. Ejecutar la aplicación
 python -m app.main
 ```
+
+**Nota sobre permisos en PowerShell:**
+Si encuentras un error de política de ejecución, ejecuta:
+```powershell
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+### macOS/Linux
+
+**Recomendado - Usar el script de ejecución:**
+```bash
+# Dar permisos de ejecución (solo la primera vez)
+chmod +x run.sh
+
+# Ejecutar la aplicación
+./run.sh
+```
+
+**Alternativa - Ejecución manual:**
+```bash
+# 1. Activar el entorno virtual
+source .venv/bin/activate
+
+# 2. Ejecutar la aplicación
+python -m app.main
+```
+
+**IMPORTANTE**: 
+- Siempre debes activar el entorno virtual antes de ejecutar la aplicación, de lo contrario los proveedores no se inicializarán correctamente.
+- El script `run.ps1` (Windows) o `run.sh` (macOS/Linux) lo hace automáticamente por ti.
+
+### Instalación de Paquetes Adicionales
+
+Si necesitas instalar un paquete adicional y actualizar `requirements.txt`:
+
+**Windows:**
+```powershell
+.\install-package.ps1 <nombre-paquete>
+```
+
+**Ejemplo:**
+```powershell
+.\install-package.ps1 requests
+```
+
+Este script automáticamente:
+- Activa el entorno virtual
+- Instala el paquete
+- Actualiza `requirements.txt` con la versión exacta instalada
 
 ## Estructura del Proyecto
 

@@ -34,6 +34,7 @@ class STTService:
         self.is_running = False
         self._audio_queue: Optional[asyncio.Queue] = None
         self._stt_task: Optional[asyncio.Task] = None
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
     
     async def start(self):
         """Start STT service."""
@@ -42,30 +43,50 @@ class STTService:
             return
         
         self.is_running = True
+        self._loop = asyncio.get_running_loop()
         self._audio_queue = asyncio.Queue()
         
         # Initialize audio capture
         self.audio_capture = AudioCapture(
             sample_rate=self.settings.audio_sample_rate,
             channels=self.settings.audio_channels,
-            chunk_size=self.settings.audio_chunk_size
+            chunk_size=self.settings.audio_chunk_size,
+            device_index=self.settings.audio_device_index
         )
         
         # Initialize chunker
         self.audio_chunker = AudioChunker(
             sample_rate=self.settings.audio_sample_rate,
             buffer_seconds=self.settings.audio_buffer_seconds,
-            chunk_size=self.settings.audio_chunk_size
+            chunk_size=self.settings.audio_chunk_size,
+            vad=None  # Do not drop silence; Deepgram will disconnect if it receives no audio.
         )
         
         # Set chunker callback
         def audio_callback(audio_data: bytes):
             """Callback for audio chunks."""
-            if self._audio_queue:
+            # NOTE: This callback is invoked from PyAudio's thread, not the asyncio loop thread.
+            # asyncio.Queue is not thread-safe: we must enqueue via loop.call_soon_threadsafe.
+            if not self._audio_queue or not self._loop:
+                return
+
+            def _enqueue():
                 try:
                     self._audio_queue.put_nowait(audio_data)
+                    if not hasattr(self, "_callback_count"):
+                        self._callback_count = 0
+                    self._callback_count += 1
+                    if self._callback_count <= 5:
+                        logger.info(f"Audio callback {self._callback_count}: queued {len(audio_data)} bytes")
+                    elif self._callback_count % 100 == 0:
+                        logger.debug(f"Audio callback {self._callback_count}: queued {len(audio_data)} bytes")
                 except asyncio.QueueFull:
                     logger.warning("Audio queue full, dropping chunk")
+
+            if self._loop.is_running():
+                self._loop.call_soon_threadsafe(_enqueue)
+            else:
+                _enqueue()
         
         self.audio_chunker.set_callback(audio_callback)
         self.audio_chunker.start()
@@ -84,24 +105,40 @@ class STTService:
         """Process audio through STT."""
         async def audio_stream():
             """Async iterator for audio chunks."""
+            chunks_yielded = 0
             while self.is_running:
                 try:
                     chunk = await asyncio.wait_for(
                         self._audio_queue.get(),
                         timeout=1.0
                     )
+                    chunks_yielded += 1
+                    if chunks_yielded <= 5:
+                        logger.info(f"Audio stream yielding chunk {chunks_yielded}: {len(chunk)} bytes to Deepgram")
+                    elif chunks_yielded % 100 == 0:
+                        logger.debug(f"Audio stream yielding chunk {chunks_yielded}: {len(chunk)} bytes to Deepgram")
                     yield chunk
                 except asyncio.TimeoutError:
+                    if chunks_yielded == 0:
+                        logger.warning("Audio stream timeout: no chunks received yet")
                     continue
                 except Exception as e:
                     logger.error(f"Error getting audio chunk: {e}")
                     break
         
         try:
+            # Determine language for STT
+            if self.settings.audio_is_spanish:
+                stt_language = "es"
+            elif not self.settings.auto_detect_language:
+                stt_language = self.settings.default_language_hint
+            else:
+                stt_language = None
+            
             async for transcript_event in self.stt_router.stream(
                 audio_stream=audio_stream(),
                 sample_rate=self.settings.audio_sample_rate,
-                language=self.settings.default_language_hint if not self.settings.auto_detect_language else None,
+                language=stt_language,
                 diarize=True,
                 punctuate=True
             ):

@@ -1,5 +1,6 @@
 """STT provider router with failover."""
 
+import sys
 from typing import List, Optional, AsyncIterator
 import logging
 
@@ -26,6 +27,9 @@ class STTRouter:
         self.providers: List[STTProvider] = []
         self.provider_names: List[str] = []
         
+        # Track initialization failures for better error messages
+        initialization_errors = []
+        
         # Create providers based on chain
         for provider_name in settings.stt_provider_chain:
             try:
@@ -35,10 +39,57 @@ class STTRouter:
                     self.provider_names.append(provider_name)
                     logger.info(f"Initialized STT provider: {provider_name}")
             except Exception as e:
-                logger.warning(f"Failed to initialize STT provider {provider_name}: {e}")
+                error_msg = str(e)
+                logger.warning(f"Failed to initialize STT provider {provider_name}: {error_msg}")
+                initialization_errors.append((provider_name, error_msg))
         
         if not self.providers:
-            raise RuntimeError("No STT providers available")
+            # Build detailed error message with diagnostics
+            error_details = []
+            error_details.append("No STT providers available. Failed to initialize:")
+            
+            for provider_name, error_msg in initialization_errors:
+                error_details.append(f"  - {provider_name}: {error_msg}")
+            
+            # Add diagnostic suggestions
+            suggestions = []
+            
+            # Check if it's an import error (likely wrong Python environment)
+            if any("not installed" in err.lower() or "import" in err.lower() 
+                   for _, err in initialization_errors):
+                python_path = sys.executable
+                in_venv = hasattr(sys, 'real_prefix') or (
+                    hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix
+                )
+                
+                if not in_venv:
+                    suggestions.append(
+                        "  * You may not be using the virtual environment. "
+                        "Activate it with: .venv\\Scripts\\activate (Windows) or "
+                        "source .venv/bin/activate (Linux/Mac)"
+                    )
+                    suggestions.append(
+                        f"  * Current Python: {python_path}"
+                    )
+                else:
+                    suggestions.append(
+                        "  * Package may not be installed. Install with: "
+                        "pip install deepgram-sdk"
+                    )
+            
+            # Check for missing API keys
+            if any("api key" in err.lower() or "api_key" in err.lower() 
+                   for _, err in initialization_errors):
+                suggestions.append(
+                    "  * Check your .env file and ensure DEEPGRAM_API_KEY is set"
+                )
+            
+            if suggestions:
+                error_details.append("\nSuggestions:")
+                error_details.extend(suggestions)
+            
+            error_message = "\n".join(error_details)
+            raise RuntimeError(error_message)
         
         # Create router
         self.router = ProviderRouter(
