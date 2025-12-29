@@ -60,11 +60,11 @@ class Settings(BaseModel):
     audio_is_spanish: bool = False  # When True, audio is in Spanish, no translation needed
     
     # Summary Configuration
-    summary_update_seconds: int = 15
+    summary_update_seconds: int = 60
     summary_max_context_minutes: int = 20
     
     # Questions Configuration
-    questions_update_seconds: int = 30
+    questions_update_seconds: int = 300  # 5 minutes
     questions_max_count: int = 10
     
     # UI Configuration
