@@ -30,7 +30,7 @@ class AudioDeviceDialog(QDialog):
     
     def init_ui(self):
         """Initialize the dialog UI."""
-        self.setWindowTitle("Seleccionar Dispositivo de Audio")
+        self.setWindowTitle("Seleccionar Dispositivo de Audio / Select Audio Device")
         self.setMinimumWidth(500)
         self.setMinimumHeight(400)
         
@@ -38,12 +38,12 @@ class AudioDeviceDialog(QDialog):
         layout.setSpacing(10)
         
         # Title
-        title = QLabel("Selecciona el dispositivo de entrada de audio:")
+        title = QLabel("Selecciona el dispositivo de entrada de audio:\nSelect audio input device:")
         title.setStyleSheet("font-size: 14px; font-weight: bold; margin-bottom: 5px;")
         layout.addWidget(title)
         
         # Info label
-        info = QLabel("Para capturar audio del sistema, selecciona 'Stereo Mix' o 'Mezcla estéreo'")
+        info = QLabel("Para capturar audio del sistema, selecciona 'Stereo Mix' o 'Mezcla estéreo'\nTo capture system audio, select 'Stereo Mix' or 'Mezcla estéreo'")
         info.setStyleSheet("color: #888888; font-size: 11px; margin-bottom: 10px;")
         info.setWordWrap(True)
         layout.addWidget(info)
@@ -74,7 +74,7 @@ class AudioDeviceDialog(QDialog):
         # Buttons
         button_layout = QHBoxLayout()
         
-        refresh_btn = QPushButton("🔄 Actualizar")
+        refresh_btn = QPushButton("🔄 Actualizar\nRefresh")
         refresh_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3a3a3a;
@@ -91,7 +91,7 @@ class AudioDeviceDialog(QDialog):
         
         button_layout.addStretch()
         
-        cancel_btn = QPushButton("Cancelar")
+        cancel_btn = QPushButton("Cancelar\nCancel")
         cancel_btn.setStyleSheet("""
             QPushButton {
                 background-color: #4a2a2a;
@@ -106,7 +106,7 @@ class AudioDeviceDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         button_layout.addWidget(cancel_btn)
         
-        ok_btn = QPushButton("Aceptar")
+        ok_btn = QPushButton("Aceptar\nAccept")
         ok_btn.setStyleSheet("""
             QPushButton {
                 background-color: #2d5a2d;
@@ -134,7 +134,7 @@ class AudioDeviceDialog(QDialog):
             devices = capture.list_devices()
             
             if not devices:
-                item = QListWidgetItem("No se encontraron dispositivos de audio")
+                item = QListWidgetItem("No se encontraron dispositivos de audio / No audio devices found")
                 item.setFlags(Qt.NoItemFlags)
                 self.devices_list.addItem(item)
                 return
@@ -162,7 +162,7 @@ class AudioDeviceDialog(QDialog):
                 name_lower = device_name.lower()
                 if 'stereo mix' in name_lower or 'mezcla estéreo' in name_lower or 'loopback' in name_lower:
                     item.setForeground(Qt.green)
-                    item.setText(f"🎤 {display_text} (Recomendado para audio del sistema)")
+                    item.setText(f"🎤 {display_text} (Recomendado para audio del sistema / Recommended for system audio)")
                 
                 # Mark current selection
                 if device_index == self.current_device_index:
@@ -179,8 +179,8 @@ class AudioDeviceDialog(QDialog):
         except Exception as e:
             QMessageBox.warning(
                 self,
-                "Error",
-                f"No se pudieron cargar los dispositivos de audio:\n{str(e)}"
+                "Error / Error",
+                f"No se pudieron cargar los dispositivos de audio:\nCould not load audio devices:\n\n{str(e)}"
             )
     
     def accept(self):
@@ -190,8 +190,8 @@ class AudioDeviceDialog(QDialog):
         if not current_item:
             QMessageBox.warning(
                 self,
-                "Selección requerida",
-                "Por favor, selecciona un dispositivo de audio."
+                "Selección Requerida / Selection Required",
+                "Por favor, selecciona un dispositivo de audio.\nPlease select an audio device."
             )
             return
         

@@ -88,7 +88,7 @@ class MainWindow(QMainWindow):
         main_layout.addLayout(panels_layout)
         
         # Status bar with provider info
-        self.statusBar().showMessage("Ready")
+        self.statusBar().showMessage("Listo / Ready")
         self.status_label = QLabel("")
         self.statusBar().addPermanentWidget(self.status_label)
         
@@ -140,7 +140,7 @@ class MainWindow(QMainWindow):
     def update_status(self):
         """Update status bar with provider information."""
         if not self.controller.is_running:
-            self.status_label.setText("Services not running")
+            self.status_label.setText("Servicios no iniciados / Services not running")
             return
         
         status = self.controller.get_provider_status()
@@ -157,9 +157,9 @@ class MainWindow(QMainWindow):
         if "questions_llm" in status:
             parts.append(f"Questions-Model: {status['questions_llm']['model']}")
         
-        status_text = " | ".join(parts) if parts else "Running"
+        status_text = " | ".join(parts) if parts else "Ejecutando / Running"
         if self.controller.is_paused:
-            status_text += " (PAUSED)"
+            status_text += " (PAUSADO / PAUSED)"
         self.status_label.setText(status_text)
     
     def _on_start(self):
@@ -168,13 +168,13 @@ class MainWindow(QMainWindow):
             try:
                 await self.controller.start()
                 self.toolbar.set_running(True)
-                self.statusBar().showMessage("Services started", 3000)
+                self.statusBar().showMessage("Servicios iniciados / Services started", 3000)
             except Exception as e:
                 self.statusBar().showMessage(f"Error: {e}", 5000)
                 QMessageBox.critical(
                     self,
-                    "Start Error",
-                    f"Failed to start services:\n{str(e)}"
+                    "Error al Iniciar / Start Error",
+                    f"No se pudieron iniciar los servicios:\nFailed to start services:\n\n{str(e)}"
                 )
         
         asyncio.ensure_future(start_async())
@@ -185,7 +185,7 @@ class MainWindow(QMainWindow):
             try:
                 await self.controller.pause()
                 self.toolbar.set_paused(True)
-                self.statusBar().showMessage("Services paused", 3000)
+                self.statusBar().showMessage("Servicios pausados / Services paused", 3000)
             except Exception as e:
                 self.statusBar().showMessage(f"Error: {e}", 5000)
         
@@ -197,7 +197,7 @@ class MainWindow(QMainWindow):
             try:
                 await self.controller.resume()
                 self.toolbar.set_paused(False)
-                self.statusBar().showMessage("Services resumed", 3000)
+                self.statusBar().showMessage("Servicios reanudados / Services resumed", 3000)
             except Exception as e:
                 self.statusBar().showMessage(f"Error: {e}", 5000)
         
@@ -207,8 +207,8 @@ class MainWindow(QMainWindow):
         """Handle finalize button click."""
         reply = QMessageBox.question(
             self,
-            "Finalize Session",
-            "This will stop all services and export the session.\n\nContinue?",
+            "Finalizar Sesión / Finalize Session",
+            "Esto detendrá todos los servicios y exportará la sesión.\nThis will stop all services and export the session.\n\n¿Continuar? / Continue?",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
@@ -224,16 +224,16 @@ class MainWindow(QMainWindow):
                 
                 QMessageBox.information(
                     self,
-                    "Session Finalized",
-                    f"Session exported successfully to:\n{folder_path}"
+                    "Sesión Finalizada / Session Finalized",
+                    f"Sesión exportada exitosamente a:\nSession exported successfully to:\n\n{folder_path}"
                 )
-                self.statusBar().showMessage("Session finalized", 5000)
+                self.statusBar().showMessage("Sesión finalizada / Session finalized", 5000)
             except Exception as e:
                 self.statusBar().showMessage(f"Error: {e}", 5000)
                 QMessageBox.critical(
                     self,
-                    "Finalize Error",
-                    f"Failed to finalize session:\n{str(e)}"
+                    "Error al Finalizar / Finalize Error",
+                    f"No se pudo finalizar la sesión:\nFailed to finalize session:\n\n{str(e)}"
                 )
         
         asyncio.ensure_future(finalize_async())
@@ -242,8 +242,8 @@ class MainWindow(QMainWindow):
         """Handle clear button click."""
         reply = QMessageBox.question(
             self,
-            "Clear Session",
-            "This will clear all panels and session data.\n\nAre you sure?",
+            "Limpiar Sesión / Clear Session",
+            "Esto limpiará todos los paneles y los datos de la sesión.\nThis will clear all panels and session data.\n\n¿Estás seguro? / Are you sure?",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
@@ -254,13 +254,13 @@ class MainWindow(QMainWindow):
         try:
             self.controller.clear_session()
             self.clear_all_panels()
-            self.statusBar().showMessage("Session cleared", 3000)
+            self.statusBar().showMessage("Sesión limpiada / Session cleared", 3000)
         except Exception as e:
             self.statusBar().showMessage(f"Error: {e}", 5000)
             QMessageBox.critical(
                 self,
-                "Clear Error",
-                f"Failed to clear session:\n{str(e)}"
+                "Error al Limpiar / Clear Error",
+                f"No se pudo limpiar la sesión:\nFailed to clear session:\n\n{str(e)}"
             )
     
     def clear_all_panels(self):
@@ -294,15 +294,16 @@ class MainWindow(QMainWindow):
                         break
                 
                 self.statusBar().showMessage(
-                    f"Dispositivo de audio seleccionado: {device_name}",
+                    f"Dispositivo de audio seleccionado / Audio device selected: {device_name}",
                     5000
                 )
                 
                 QMessageBox.information(
                     self,
-                    "Dispositivo seleccionado",
-                    f"Dispositivo de audio configurado:\n{device_name}\n\n"
-                    "La configuración se aplicará la próxima vez que inicies la captura."
+                    "Dispositivo Seleccionado / Device Selected",
+                    f"Dispositivo de audio configurado:\nAudio device configured:\n\n{device_name}\n\n"
+                    "La configuración se aplicará la próxima vez que inicies la captura.\n"
+                    "The configuration will be applied the next time you start capture."
                 )
     
     def _on_audio_is_spanish_changed(self, is_spanish: bool):
@@ -315,12 +316,12 @@ class MainWindow(QMainWindow):
         # Show status message
         if is_spanish:
             self.statusBar().showMessage(
-                "Modo español activado: El audio será transcrito en español sin traducción",
+                "Modo español activado / Spanish mode activated: El audio será transcrito en español sin traducción / Audio will be transcribed in Spanish without translation",
                 3000
             )
         else:
             self.statusBar().showMessage(
-                "Modo inglés activado: El audio será transcrito en inglés y traducido al español",
+                "Modo inglés activado / English mode activated: El audio será transcrito en inglés y traducido al español / Audio will be transcribed in English and translated to Spanish",
                 3000
             )
     
@@ -381,9 +382,9 @@ class MainWindow(QMainWindow):
         # Show confirmation dialog
         reply = QMessageBox.question(
             self,
-            "Cerrar Aplicación",
-            "¿Estás seguro de que deseas cerrar la aplicación?\n\n"
-            "Si hay una sesión activa, se detendrá.",
+            "Cerrar Aplicación / Close Application",
+            "¿Estás seguro de que deseas cerrar la aplicación?\nAre you sure you want to close the application?\n\n"
+            "Si hay una sesión activa, se detendrá.\nIf there is an active session, it will be stopped.",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )

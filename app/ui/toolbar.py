@@ -32,13 +32,14 @@ class ControlToolbar(QWidget):
         layout.setSpacing(10)
         
         # Start button (green)
-        self.start_btn = QPushButton("▶ Iniciar")
+        self.start_btn = QPushButton("▶ Iniciar\nStart")
         self.start_btn.setStyleSheet("""
             QPushButton {
                 background-color: #2d5a2d;
                 color: white;
                 font-weight: bold;
-                padding: 8px 20px;
+                font-size: 11px;
+                padding: 6px 15px;
                 border-radius: 5px;
             }
             QPushButton:hover {
@@ -53,13 +54,14 @@ class ControlToolbar(QWidget):
         layout.addWidget(self.start_btn)
         
         # Pause/Resume button (yellow/orange)
-        self.pause_btn = QPushButton("⏸ Pausar")
+        self.pause_btn = QPushButton("⏸ Pausar\nPause")
         self.pause_btn.setStyleSheet("""
             QPushButton {
                 background-color: #5a4d2d;
                 color: white;
                 font-weight: bold;
-                padding: 8px 20px;
+                font-size: 11px;
+                padding: 6px 15px;
                 border-radius: 5px;
             }
             QPushButton:hover {
@@ -74,13 +76,14 @@ class ControlToolbar(QWidget):
         layout.addWidget(self.pause_btn)
         
         # Finalize button (red)
-        self.finalize_btn = QPushButton("⏹ Finalizar")
+        self.finalize_btn = QPushButton("⏹ Finalizar\nFinish")
         self.finalize_btn.setStyleSheet("""
             QPushButton {
                 background-color: #5a2d2d;
                 color: white;
                 font-weight: bold;
-                padding: 8px 20px;
+                font-size: 11px;
+                padding: 6px 15px;
                 border-radius: 5px;
             }
             QPushButton:hover {
@@ -97,7 +100,7 @@ class ControlToolbar(QWidget):
         layout.addStretch()
         
         # Audio is Spanish checkbox
-        self.audio_is_spanish_checkbox = QCheckBox("Audio en Español")
+        self.audio_is_spanish_checkbox = QCheckBox("Audio en Español\nAudio in Spanish")
         self.audio_is_spanish_checkbox.setToolTip(
             "Marcar si el audio es en español.\n"
             "Nota: El sistema detecta automáticamente el idioma y traducirá\n"
@@ -108,6 +111,7 @@ class ControlToolbar(QWidget):
             QCheckBox {
                 color: white;
                 font-weight: bold;
+                font-size: 11px;
                 padding: 5px;
             }
             QCheckBox::indicator {
@@ -132,13 +136,14 @@ class ControlToolbar(QWidget):
         layout.addWidget(self.audio_is_spanish_checkbox)
         
         # Audio device button (blue)
-        self.audio_device_btn = QPushButton("🎤 Audio")
+        self.audio_device_btn = QPushButton("🎤 Audio\nDevice")
         self.audio_device_btn.setStyleSheet("""
             QPushButton {
                 background-color: #2d3a5a;
                 color: white;
                 font-weight: bold;
-                padding: 8px 20px;
+                font-size: 11px;
+                padding: 6px 15px;
                 border-radius: 5px;
             }
             QPushButton:hover {
@@ -149,13 +154,14 @@ class ControlToolbar(QWidget):
         layout.addWidget(self.audio_device_btn)
         
         # Clear button (gray)
-        self.clear_btn = QPushButton("🗑 Limpiar")
+        self.clear_btn = QPushButton("🗑 Limpiar\nClear")
         self.clear_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3a3a3a;
                 color: white;
                 font-weight: bold;
-                padding: 8px 20px;
+                font-size: 11px;
+                padding: 6px 15px;
                 border-radius: 5px;
             }
             QPushButton:hover {
@@ -201,9 +207,9 @@ class ControlToolbar(QWidget):
         """Set paused state."""
         self.is_paused = paused
         if paused:
-            self.pause_btn.setText("▶ Retomar")
+            self.pause_btn.setText("▶ Retomar\nResume")
         else:
-            self.pause_btn.setText("⏸ Pausar")
+            self.pause_btn.setText("⏸ Pausar\nPause")
         self.update_button_states()
     
     def update_button_states(self):

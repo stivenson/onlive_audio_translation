@@ -27,14 +27,14 @@ class DiagnosticDialog(QDialog):
     
     def init_ui(self):
         """Initialize the dialog UI."""
-        self.setWindowTitle("Diagnostic Report")
+        self.setWindowTitle("Reporte de Diagnóstico / Diagnostic Report")
         self.setMinimumWidth(600)
         self.setMinimumHeight(500)
         
         layout = QVBoxLayout(self)
         
         # Title
-        title = QLabel("System Diagnostic Report")
+        title = QLabel("Reporte de Diagnóstico del Sistema\nSystem Diagnostic Report")
         title.setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 10px;")
         layout.addWidget(title)
         
@@ -49,7 +49,7 @@ class DiagnosticDialog(QDialog):
         
         # Issues area
         if self.report.issues:
-            issues_label = QLabel("Issues Found:")
+            issues_label = QLabel("Problemas Encontrados / Issues Found:")
             issues_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
             layout.addWidget(issues_label)
             
@@ -70,7 +70,7 @@ class DiagnosticDialog(QDialog):
             scroll.setWidget(issues_widget)
             layout.addWidget(scroll)
         else:
-            no_issues = QLabel("✓ No issues found. System is ready!")
+            no_issues = QLabel("✓ No se encontraron problemas. ¡El sistema está listo!\n✓ No issues found. System is ready!")
             no_issues.setStyleSheet("color: green; font-size: 14px; padding: 20px;")
             no_issues.setAlignment(Qt.AlignCenter)
             layout.addWidget(no_issues)
@@ -81,13 +81,13 @@ class DiagnosticDialog(QDialog):
         # Copy command button (only if there are commands to copy)
         commands = [issue.command for issue in self.report.issues if issue.command]
         if commands:
-            copy_btn = QPushButton("Copy Commands")
+            copy_btn = QPushButton("Copiar Comandos\nCopy Commands")
             copy_btn.clicked.connect(lambda: self._copy_commands(commands))
             button_layout.addWidget(copy_btn)
         
         button_layout.addStretch()
         
-        close_btn = QPushButton("Close")
+        close_btn = QPushButton("Cerrar\nClose")
         close_btn.clicked.connect(self.accept)
         button_layout.addWidget(close_btn)
         
@@ -134,7 +134,7 @@ class DiagnosticDialog(QDialog):
         layout.addWidget(message)
         
         # Solution
-        solution = QLabel(f"Solution: {issue.solution}")
+        solution = QLabel(f"Solución / Solution: {issue.solution}")
         solution.setStyleSheet("color: #aaccff; margin-top: 5px;")
         solution.setWordWrap(True)
         layout.addWidget(solution)
@@ -159,8 +159,8 @@ class DiagnosticDialog(QDialog):
         
         QMessageBox.information(
             self,
-            "Commands Copied",
-            f"Copied {len(commands)} command(s) to clipboard.\n\n"
-            "Paste them in your terminal to fix the issues."
+            "Comandos Copiados / Commands Copied",
+            f"Se copiaron {len(commands)} comando(s) al portapapeles.\nCopied {len(commands)} command(s) to clipboard.\n\n"
+            "Pégalos en tu terminal para corregir los problemas.\nPaste them in your terminal to fix the issues."
         )
 

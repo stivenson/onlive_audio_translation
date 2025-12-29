@@ -59,8 +59,8 @@ The application will automatically detect and use Stereo Mix when available.
 
 1. Clone the repository:
 ```bash
-git clone <repo-url>
-cd traducción_on_live_audio
+git clone git@github.com:stivenson/onlive_audio_translation.git
+cd onlive_audio_translation
 ```
 
 2. Create a virtual environment:
