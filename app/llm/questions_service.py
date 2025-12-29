@@ -55,8 +55,10 @@ class QuestionsService:
                 recent_transcripts = self.memory.get_recent_transcripts()
                 
                 if len(recent_transcripts) < 3:  # Need at least a few exchanges
+                    logger.debug(f"Not enough transcripts for questions: {len(recent_transcripts)}/3. Waiting...")
                     continue
                 
+                logger.info(f"Generating questions from {len(recent_transcripts)} transcripts...")
                 # Generate questions
                 await self._generate_questions()
             
@@ -117,10 +119,12 @@ Solo proporciona el JSON, sin texto adicional."""
             # Update current questions
             self.current_questions = response.questions[:self.settings.questions_max_count]
             
+            logger.info(f"Generated {len(self.current_questions)} questions")
+            
             # Publish questions event
             await event_bus.publish("questions", self.current_questions)
             
-            logger.debug(f"Generated {len(self.current_questions)} questions")
+            logger.info(f"Published {len(self.current_questions)} questions to UI")
         
         except Exception as e:
             logger.error(f"Questions generation error: {e}")

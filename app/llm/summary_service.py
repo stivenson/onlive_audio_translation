@@ -33,6 +33,7 @@ class SummaryService:
         self._task: Optional[asyncio.Task] = None
         self.current_summary: Optional[SummaryUpdate] = None
         self.last_update_time: Optional[datetime] = None
+        self.last_summarized_timestamp: Optional[datetime] = None
     
     async def start(self):
         """Start summary service."""
@@ -72,49 +73,65 @@ class SummaryService:
     async def _generate_summary(self):
         """Generate or update summary."""
         try:
-            # Get recent context
-            context_text = self.memory.get_full_context_text(include_translations=True)
+            # Get new content since last summary
+            if self.last_summarized_timestamp:
+                # Get only new transcripts/translations since last summary
+                new_transcripts = self.memory.get_transcripts_after(self.last_summarized_timestamp)
+                new_translations = self.memory.get_translations_after(self.last_summarized_timestamp)
+                
+                if not new_transcripts and not new_translations:
+                    logger.debug("No new content to summarize")
+                    return
+                
+                # Build context text from new content only
+                lines = []
+                for trans in new_translations:
+                    lines.append(f"[{trans.timestamp.strftime('%H:%M:%S')}] {trans.translated_text}")
+                
+                context_text = "\n".join(lines)
+            else:
+                # First summary - get all recent context
+                context_text = self.memory.get_full_context_text(include_translations=True)
             
             if not context_text:
                 return
             
             # Summary is always in Spanish as per requirements ("la idea general es en español")
-            # Build prompt in Spanish
-            if self.current_summary:
-                # Update existing summary
-                prompt = f"""Eres un asistente que mantiene un resumen en vivo de una conversación. El resumen debe estar en español.
-Aquí está el resumen actual:
-
-{self.current_summary.summary}
+            # Generate a new paragraph for the new content
+            if self.last_summarized_timestamp:
+                # Generate a new paragraph for incremental update
+                prompt = f"""Eres un asistente que genera resúmenes incrementales de una conversación en español.
 
 Aquí está el nuevo contenido de la conversación que ha ocurrido desde la última actualización:
 
 {context_text}
 
-Actualiza el resumen para incluir la nueva información mientras mantienes los hechos y decisiones importantes del resumen anterior. 
-Manténlo conciso pero completo. Enfócate en puntos clave, decisiones e información importante.
-Responde SOLO con el resumen actualizado en español, sin texto adicional.
-
-Resumen actualizado:"""
-            else:
-                # Create new summary
-                prompt = f"""Crea un resumen conciso en español de la siguiente conversación. 
+Genera un nuevo párrafo en español que resuma ÚNICAMENTE esta nueva información. 
 Enfócate en puntos clave, decisiones e información importante.
-Responde SOLO con el resumen en español, sin texto adicional.
+Manténlo conciso (2-4 oraciones).
+Responde SOLO con el nuevo párrafo en español, sin texto adicional ni referencias al resumen anterior.
+
+Nuevo párrafo:"""
+            else:
+                # Create first summary paragraph
+                prompt = f"""Crea un párrafo de resumen conciso en español de la siguiente conversación. 
+Enfócate en puntos clave, decisiones e información importante.
+Manténlo conciso (2-4 oraciones).
+Responde SOLO con el párrafo en español, sin texto adicional.
 
 Conversación:
 {context_text}
 
-Resumen:"""
+Párrafo de resumen:"""
             
-            # Generate summary
+            # Generate summary paragraph
             summary_text = await self.llm_router.generate_text(
                 prompt=prompt,
                 temperature=0.5,
-                max_tokens=500
+                max_tokens=300
             )
             
-            # Create summary update
+            # Update tracking
             version = (self.current_summary.version + 1) if self.current_summary else 1
             self.current_summary = SummaryUpdate(
                 summary=summary_text.strip(),
@@ -123,10 +140,15 @@ Resumen:"""
             )
             self.last_update_time = datetime.now()
             
-            # Publish summary event
+            # Update last summarized timestamp to the latest content timestamp
+            translations = self.memory.get_recent_translations()
+            if translations:
+                self.last_summarized_timestamp = max(t.timestamp for t in translations)
+            
+            # Publish summary event (this will be appended in the UI)
             await event_bus.publish("summary", self.current_summary)
             
-            logger.debug(f"Summary updated (version {version})")
+            logger.debug(f"Summary paragraph generated (version {version})")
         
         except Exception as e:
             logger.error(f"Summary generation error: {e}")

@@ -98,6 +98,12 @@ class ControlToolbar(QWidget):
         
         # Audio is Spanish checkbox
         self.audio_is_spanish_checkbox = QCheckBox("Audio en Español")
+        self.audio_is_spanish_checkbox.setToolTip(
+            "Marcar si el audio es en español.\n"
+            "Nota: El sistema detecta automáticamente el idioma y traducirá\n"
+            "si detecta inglés, incluso si este checkbox está marcado.\n"
+            "Esto previene que aparezca texto en inglés en la columna de traducción."
+        )
         self.audio_is_spanish_checkbox.setStyleSheet("""
             QCheckBox {
                 color: white;

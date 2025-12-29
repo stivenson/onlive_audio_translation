@@ -122,9 +122,20 @@ class MainWindow(QMainWindow):
     
     def on_questions(self, questions):
         """Handle questions event."""
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"MainWindow received {len(questions)} questions")
+        
         self.panel4.clear_questions()
+        if not questions:
+            logger.warning("Received empty questions list")
+            return
+        
         for q in questions:
+            logger.debug(f"Adding question: {q.question_es if hasattr(q, 'question_es') else q.question_en}")
             self.panel4.add_question(q.question_en, q.question_es)
+        
+        logger.info(f"Added {len(questions)} questions to panel")
     
     def update_status(self):
         """Update status bar with provider information."""

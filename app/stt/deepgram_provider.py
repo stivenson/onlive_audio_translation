@@ -50,6 +50,17 @@ from app.core.schemas import TranscriptEvent, TranscriptType
 logger = logging.getLogger(__name__)
 
 
+# Custom exceptions for better error handling
+class DeepgramConnectionError(Exception):
+    """Raised when Deepgram connection fails or closes unexpectedly."""
+    pass
+
+
+class DeepgramTimeoutError(Exception):
+    """Raised when Deepgram times out without response."""
+    pass
+
+
 class DeepgramProvider(STTProvider):
     """Deepgram streaming STT provider."""
     
@@ -199,15 +210,40 @@ class DeepgramProvider(STTProvider):
             
             async def on_error(self_inner, error, **kwargs):
                 """Handle errors from Deepgram."""
-                logger.error(f"Deepgram error: {error}")
-                try:
-                    await message_queue.put(None)  # Signal error
-                except:
-                    pass
+                error_msg = str(error)
+                logger.error(f"Deepgram error: {error_msg}")
+                
+                # Check for specific error codes
+                if "1011" in error_msg:
+                    logger.error("Deepgram error 1011: Timeout - no response within timeout window")
+                    # Signal timeout error
+                    try:
+                        await message_queue.put(DeepgramTimeoutError("Deepgram timeout (1011)"))
+                    except:
+                        pass
+                elif "connection" in error_msg.lower() or "closed" in error_msg.lower():
+                    logger.error("Deepgram connection error detected")
+                    try:
+                        await message_queue.put(DeepgramConnectionError(f"Connection error: {error_msg}"))
+                    except:
+                        pass
+                else:
+                    # Generic error
+                    try:
+                        await message_queue.put(None)  # Signal error
+                    except:
+                        pass
             
-            async def on_close(self_inner, **kwargs):
+            async def on_close(self_inner, close_code=None, **kwargs):
                 """Handle connection close."""
-                logger.info("Deepgram connection closed")
+                if close_code:
+                    logger.warning(f"Deepgram connection closed with code: {close_code}")
+                    # Check if this was an unexpected close
+                    if close_code != 1000:  # 1000 is normal close
+                        logger.error(f"Unexpected connection close: {close_code}")
+                else:
+                    logger.info("Deepgram connection closed")
+                
                 try:
                     connection_closed.set()
                     await message_queue.put(None)  # Signal end
@@ -431,6 +467,11 @@ class DeepgramProvider(STTProvider):
                     if message is None:
                         # End signal
                         break
+                    
+                    # Check if message is an exception
+                    if isinstance(message, Exception):
+                        logger.error(f"Received error from Deepgram: {message}")
+                        raise message
                     
                     try:
                         # Parse Deepgram response

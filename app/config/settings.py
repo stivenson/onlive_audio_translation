@@ -53,11 +53,19 @@ class Settings(BaseModel):
     audio_chunk_size: int = 3200
     audio_buffer_seconds: int = 3
     audio_device_index: Optional[int] = None
+    audio_batch_seconds: int = 10  # Accumulate audio for N seconds before sending to STT
     
     # Language Detection
     default_language_hint: str = "en"
     auto_detect_language: bool = True
     audio_is_spanish: bool = False  # When True, audio is in Spanish, no translation needed
+    
+    # STT Health and Reconnection
+    stt_health_check_interval_seconds: int = 10
+    stt_no_transcript_timeout_seconds: int = 30
+    stt_max_reconnect_attempts: int = 5
+    stt_reconnect_backoff_base: float = 2.0
+    stt_reconnect_max_wait_seconds: int = 30
     
     # Summary Configuration
     summary_update_seconds: int = 60
@@ -99,15 +107,25 @@ def load_settings() -> Settings:
         # Parse boolean values
         elif key_lower in ["auto_detect_language", "audio_is_spanish"]:
             settings_dict[key_lower] = value.lower() in ("true", "1", "yes")
+        # Parse float values
+        elif key_lower in ["stt_reconnect_backoff_base"]:
+            try:
+                settings_dict[key_lower] = float(value)
+            except ValueError:
+                pass  # Use default value
         # Parse integer values
         elif key_lower in [
             "provider_failover_cooldown_seconds", "provider_max_retries",
             "provider_timeout_seconds", "provider_circuit_breaker_failures",
             "provider_circuit_breaker_timeout_seconds", "audio_sample_rate",
             "audio_channels", "audio_chunk_size", "audio_buffer_seconds",
-            "audio_device_index", "summary_update_seconds", "summary_max_context_minutes",
-            "questions_update_seconds", "questions_max_count", "ui_font_size",
-            "log_rotation_max_bytes", "log_rotation_backup_count"
+            "audio_device_index", "audio_batch_seconds",
+            "stt_health_check_interval_seconds",
+            "stt_no_transcript_timeout_seconds", "stt_max_reconnect_attempts",
+            "stt_reconnect_max_wait_seconds", "summary_update_seconds",
+            "summary_max_context_minutes", "questions_update_seconds",
+            "questions_max_count", "ui_font_size", "log_rotation_max_bytes",
+            "log_rotation_backup_count"
         ]:
             try:
                 settings_dict[key_lower] = int(value)
@@ -126,31 +144,25 @@ def load_settings() -> Settings:
     
     settings = Settings(**settings_dict)
     
-    # Auto-select Realtek device if available (always, even if another device is configured)
+    # Auto-select Stereo Mix if available (for system audio capture)
+    # Only auto-select Stereo Mix, never auto-select microphone devices
     try:
         from app.audio.capture import AudioCapture
         capture = AudioCapture()
-        realtek_index = capture.find_realtek_device()
         
-        if realtek_index is not None:
+        # Only try to find Stereo Mix (loopback device for system audio)
+        stereo_mix_index = capture.find_loopback_device()
+        
+        if stereo_mix_index is not None:
             previous_device = settings.audio_device_index
-            settings.audio_device_index = realtek_index
+            settings.audio_device_index = stereo_mix_index
             if previous_device is not None:
-                logger.info(f"Auto-selected Realtek device (index {realtek_index}) - replaced previous device index {previous_device}")
+                logger.info(f"Auto-selected Stereo Mix (index {stereo_mix_index}) - replaced previous device index {previous_device}")
             else:
-                logger.info(f"Auto-selected audio device: Realtek (index {realtek_index})")
+                logger.info(f"Auto-selected audio device: Stereo Mix (index {stereo_mix_index})")
         else:
-            # Fallback: try Stereo Mix if Realtek not found
-            stereo_mix_index = capture.find_loopback_device()
-            if stereo_mix_index is not None:
-                previous_device = settings.audio_device_index
-                settings.audio_device_index = stereo_mix_index
-                if previous_device is not None:
-                    logger.info(f"Auto-selected Stereo Mix (index {stereo_mix_index}) - replaced previous device index {previous_device}")
-                else:
-                    logger.info(f"Auto-selected audio device: Stereo Mix (index {stereo_mix_index})")
-            else:
-                logger.info("No Realtek or Stereo Mix device found. Using configured or default audio device.")
+            logger.info("Stereo Mix not found. Using configured or default audio device.")
+            logger.warning("For system audio capture, enable Stereo Mix in Windows sound settings.")
     except Exception as e:
         logger.warning(f"Could not auto-select audio device: {e}")
     

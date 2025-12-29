@@ -62,6 +62,13 @@ class SummaryPanel(QWidget):
         self.text_display.clear()
     
     def update_summary(self, summary: str):
-        """Update the summary text."""
-        self.text_display.setPlainText(summary)
+        """Append new summary paragraph to the display."""
+        current_text = self.text_display.toPlainText()
+        if current_text:
+            # Add separator before new paragraph
+            self.text_display.append("\n")
+        self.text_display.append(summary)
+        # Auto-scroll to bottom
+        scrollbar = self.text_display.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
 

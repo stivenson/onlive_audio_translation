@@ -2,6 +2,8 @@
 
 import sys
 from typing import List, Optional, AsyncIterator
+from datetime import datetime, timedelta
+import asyncio
 import logging
 
 from app.stt.base import STTProvider
@@ -138,6 +140,10 @@ class STTRouter:
             try:
                 logger.info(f"Streaming with STT provider: {provider_name}")
                 
+                # Track last event time for timeout detection
+                last_event_time = datetime.now()
+                event_count = 0
+                
                 async for event in provider.stream(
                     audio_stream=audio_stream,
                     sample_rate=sample_rate,
@@ -150,7 +156,21 @@ class STTRouter:
                         self.router.current_index,
                         success=True
                     )
+                    
+                    # Track events
+                    event_count += 1
+                    last_event_time = datetime.now()
+                    
                     yield event
+                    
+                    # Periodically check for timeout (only after some events received)
+                    if event_count > 0 and event_count % 10 == 0:
+                        time_since_last_event = (datetime.now() - last_event_time).total_seconds()
+                        if time_since_last_event > 120:  # 2 minutes without events
+                            logger.warning(
+                                f"No events from {provider_name} for {time_since_last_event:.1f}s - "
+                                "stream may be stalled"
+                            )
                 
                 # Stream completed successfully
                 break

@@ -285,8 +285,11 @@ class AppController:
         
         async def handle_questions(event: List[QuestionPair]):
             # Call UI callback
+            logger.info(f"Controller received {len(event)} questions, calling UI callback")
             if "on_questions" in ui_callbacks:
                 ui_callbacks["on_questions"](event)
+            else:
+                logger.warning("No on_questions callback registered in UI")
         
         # Subscribe to events
         event_bus.subscribe("transcript", handle_transcript)

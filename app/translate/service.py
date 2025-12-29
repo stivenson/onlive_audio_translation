@@ -55,24 +55,22 @@ class TranslationService:
             return
         
         try:
-            # If audio is already in Spanish, just pass through without translation
-            if self.settings.audio_is_spanish:
-                translation = TranslationResult(
-                    original_text=event.text,
-                    translated_text=event.text,
-                    source_language="es",
-                    target_language="es"
-                )
-                await event_bus.publish("translation", translation)
-                return
-            
-            # Detect language if not provided
+            # ALWAYS detect language first to ensure accurate translation
+            # This protects against checkbox misconfiguration
             source_language = event.language
             if not source_language or self.settings.auto_detect_language:
                 source_language = await self.translate_router.detect_language(event.text)
             
-            # Translate if source is English (or if different from target)
             target_language = "es"
+            
+            # Check for discrepancy: checkbox says Spanish but audio is not Spanish
+            if self.settings.audio_is_spanish and source_language != "es":
+                logger.warning(
+                    f"Discrepancy detected: 'Audio en Español' checkbox is marked, "
+                    f"but detected language is '{source_language}'. Will translate to Spanish anyway."
+                )
+            
+            # Translate based on detected language, not checkbox setting
             if source_language == target_language:
                 # Already in Spanish, just pass through
                 translation = TranslationResult(
@@ -82,7 +80,7 @@ class TranslationService:
                     target_language=target_language
                 )
             else:
-                # Translate
+                # Not Spanish - translate regardless of checkbox
                 translation = await self.translate_router.translate(
                     text=event.text,
                     source_language=source_language,

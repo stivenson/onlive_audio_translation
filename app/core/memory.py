@@ -90,6 +90,30 @@ class ConversationMemory:
         cutoff_time = datetime.now() - timedelta(minutes=minutes)
         return [t for t in self.translations if t.timestamp >= cutoff_time]
     
+    def get_transcripts_after(self, timestamp: datetime) -> List[TranscriptEvent]:
+        """
+        Get transcripts that occurred after a specific timestamp.
+        
+        Args:
+            timestamp: Get transcripts after this timestamp
+            
+        Returns:
+            List of transcript events after the timestamp
+        """
+        return [t for t in self.transcripts if t.timestamp > timestamp]
+    
+    def get_translations_after(self, timestamp: datetime) -> List[TranslationResult]:
+        """
+        Get translations that occurred after a specific timestamp.
+        
+        Args:
+            timestamp: Get translations after this timestamp
+            
+        Returns:
+            List of translations after the timestamp
+        """
+        return [t for t in self.translations if t.timestamp > timestamp]
+    
     def get_full_context_text(self, include_translations: bool = False) -> str:
         """
         Get full context as text for LLM prompts.
