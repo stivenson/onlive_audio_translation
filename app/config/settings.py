@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 from dotenv import load_dotenv
+from app.utils.paths import get_base_path
 
 logger = logging.getLogger(__name__)
 
@@ -94,9 +95,16 @@ class Settings(BaseModel):
 
 def load_settings() -> Settings:
     """Load settings from .env file."""
-    env_path = Path(".env")
+    base_path = get_base_path()
+    env_path = base_path / ".env"
+    
+    # Try to load .env file
     if env_path.exists():
         load_dotenv(env_path)
+        logger.info(f"Loaded .env from: {env_path}")
+    else:
+        logger.warning(f".env file not found at: {env_path}")
+        logger.info("Using default settings and environment variables")
     
     # Parse provider chains from environment
     env_vars = os.environ
@@ -150,6 +158,24 @@ def load_settings() -> Settings:
                 settings_dict[key_lower] = value
     
     settings = Settings(**settings_dict)
+    
+    # Make paths relative to base path (for portable executables)
+    base_path = get_base_path()
+    
+    # Update model path to be relative to base path
+    if settings.ctranslate2_model_path and not Path(settings.ctranslate2_model_path).is_absolute():
+        model_path = base_path / settings.ctranslate2_model_path
+        if model_path.exists():
+            settings.ctranslate2_model_path = str(model_path)
+        else:
+            # Try relative to base path
+            logger.warning(f"CTranslate2 model not found at: {model_path}")
+    
+    # Update log file path to be relative to base path
+    if settings.log_file and not Path(settings.log_file).is_absolute():
+        log_dir = base_path / "logs"
+        log_dir.mkdir(exist_ok=True)
+        settings.log_file = str(log_dir / Path(settings.log_file).name)
     
     # Auto-select Stereo Mix if available (for system audio capture)
     # Only auto-select Stereo Mix, never auto-select microphone devices

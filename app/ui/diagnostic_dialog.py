@@ -38,14 +38,21 @@ class DiagnosticDialog(QDialog):
         title.setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 10px;")
         layout.addWidget(title)
         
-        # Python environment info
-        env_info = QLabel(f"Python: {self.report.python_path}")
-        if self.report.is_venv:
-            env_info.setText(f"Python: {self.report.python_path} (Virtual Environment: {self.report.venv_path})")
-            env_info.setStyleSheet("color: green;")
+        # Python environment info (only show if not running as executable)
+        import sys
+        if not getattr(sys, 'frozen', False):
+            env_info = QLabel(f"Python: {self.report.python_path}")
+            if self.report.is_venv:
+                env_info.setText(f"Python: {self.report.python_path} (Virtual Environment: {self.report.venv_path})")
+                env_info.setStyleSheet("color: green;")
+            else:
+                env_info.setStyleSheet("color: orange;")
+            layout.addWidget(env_info)
         else:
-            env_info.setStyleSheet("color: orange;")
-        layout.addWidget(env_info)
+            # Running as executable - show different info
+            env_info = QLabel("Ejecutable Portable / Portable Executable\nTodas las dependencias están incluidas / All dependencies are included")
+            env_info.setStyleSheet("color: green; font-weight: bold;")
+            layout.addWidget(env_info)
         
         # Issues area
         if self.report.issues:

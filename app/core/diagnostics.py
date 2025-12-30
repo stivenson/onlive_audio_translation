@@ -64,6 +64,14 @@ def check_python_environment(report: DiagnosticReport) -> None:
     Args:
         report: Diagnostic report to update
     """
+    # Skip environment checks if running as PyInstaller executable
+    if getattr(sys, 'frozen', False):
+        # Running as compiled executable - no need to check environment
+        report.python_path = sys.executable
+        report.is_venv = False  # Not applicable for executables
+        logger.info("Running as compiled executable - skipping environment checks")
+        return
+    
     python_path = sys.executable
     report.python_path = python_path
     
@@ -117,6 +125,12 @@ def check_dependencies(report: DiagnosticReport) -> None:
     Args:
         report: Diagnostic report to update
     """
+    # Skip dependency checks if running as PyInstaller executable
+    # All dependencies are bundled in the executable
+    if getattr(sys, 'frozen', False):
+        logger.info("Running as compiled executable - skipping dependency checks (all bundled)")
+        return
+    
     required_packages = {
         "deepgram": "deepgram-sdk",
         "openai": "openai",

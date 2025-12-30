@@ -11,6 +11,7 @@ from app.core.schemas import (
     TranscriptEvent, TranslationResult, SummaryUpdate, 
     QuestionPair, ProviderChangeEvent
 )
+from app.utils.paths import get_base_path
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +24,13 @@ class SessionExporter:
         Initialize session exporter.
         
         Args:
-            export_dir: Directory to save exports
+            export_dir: Directory to save exports (relative to base path)
         """
-        self.export_dir = Path(export_dir)
+        base_path = get_base_path()
+        if Path(export_dir).is_absolute():
+            self.export_dir = Path(export_dir)
+        else:
+            self.export_dir = base_path / export_dir
         self.export_dir.mkdir(exist_ok=True)
     
     def export_session(

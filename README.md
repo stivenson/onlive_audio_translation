@@ -233,6 +233,99 @@ app/
 └── storage/             # Persistence and export
 ```
 
+## Creating a Portable Executable (Windows 11) - Optional
+
+This section explains how to create a standalone executable that doesn't require Python installation. **This is only for Windows 11.**
+
+### Prerequisites
+
+- Windows 11
+- Python 3.10 or higher installed (only needed for building, not for running the executable)
+- All dependencies installed in your virtual environment
+
+### Creating the Executable
+
+1. **Ensure your virtual environment is activated and all dependencies are installed:**
+   ```powershell
+   .\.venv\Scripts\Activate.ps1
+   pip install -r requirements.txt
+   ```
+
+2. **Run the build script:**
+   ```powershell
+   .\build-executable.ps1
+   ```
+
+   This will create a single executable file `LiveAudioTranslator.exe` in the `dist/` folder.
+
+3. **Wait for the build to complete** (this may take several minutes)
+
+4. **The executable will be located at:**
+   ```
+   dist\LiveAudioTranslator.exe
+   ```
+
+### Using the Portable Executable
+
+1. **Copy the executable to your desired location:**
+   - Copy `dist\LiveAudioTranslator.exe` to wherever you want to use it
+   - Copy `.env.example` to the same location
+
+2. **Configure the application:**
+   ```powershell
+   # Copy the example config file
+   copy .env.example .env
+   
+   # Edit .env with your API keys (use Notepad or any text editor)
+   notepad .env
+   ```
+
+3. **Run the executable:**
+   ```powershell
+   .\LiveAudioTranslator.exe
+   ```
+
+   The executable is fully portable and doesn't require Python or any dependencies to be installed.
+
+### Optional: Including Local Translation Models
+
+If you want to include CTranslate2 models for offline translation:
+
+1. **Before building, generate the model:**
+   ```powershell
+   python scripts/convert_model_to_ct2.py
+   ```
+
+2. **The build script will automatically include the models**
+
+3. **After building, copy the models folder alongside the executable:**
+   ```
+   YourFolder/
+   ├── LiveAudioTranslator.exe
+   ├── .env
+   └── models/
+       └── opus-mt-en-es-ct2/
+   ```
+
+### Distribution
+
+To distribute the application:
+
+1. **Create a folder with:**
+   - `LiveAudioTranslator.exe`
+   - `.env.example` (users will copy this to `.env` and configure it)
+   - `README.md` (optional, for instructions)
+   - `models/` folder (optional, if using local translation)
+
+2. **Users only need to:**
+   - Copy `.env.example` to `.env`
+   - Edit `.env` with their API keys
+   - Run `LiveAudioTranslator.exe`
+
+**Note:** The executable is large (~200-300 MB) because it includes all dependencies. This is normal for PyInstaller executables.
+
+For more detailed information, see [BUILD_GUIDE.md](BUILD_GUIDE.md).
+
 ## License
 
 MIT

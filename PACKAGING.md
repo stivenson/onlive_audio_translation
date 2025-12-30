@@ -16,14 +16,34 @@ pip install pyinstaller
 
 ## Windows Packaging
 
-### Create Executable
+### Método Recomendado / Recommended Method
 
-```bash
+Usa el script automatizado / Use the automated script:
+
+```powershell
+.\build-executable.ps1
+```
+
+Para más detalles, ver [BUILD_GUIDE.md](BUILD_GUIDE.md)
+
+For more details, see [BUILD_GUIDE.md](BUILD_GUIDE.md)
+
+### Método Manual / Manual Method
+
+Si prefieres ejecutar PyInstaller manualmente / If you prefer to run PyInstaller manually:
+
+```powershell
 pyinstaller --name="LiveAudioTranslator" \
     --windowed \
     --onefile \
     --icon=icon.ico \
     --add-data=".env.example;." \
+    --add-data="models;models" \
+    --hidden-import=PySide6.QtCore \
+    --hidden-import=PySide6.QtGui \
+    --hidden-import=PySide6.QtWidgets \
+    --hidden-import=qasync \
+    --collect-all=app \
     app/main.py
 ```
 
@@ -89,13 +109,30 @@ create-dmg LiveAudioTranslator.app LiveAudioTranslator.dmg
 
 ## Distribution
 
-Include the following files in your distribution:
+### Archivos Necesarios / Required Files
 
-- Executable/Application bundle
-- `.env.example` file
-- `README.md`
-- `PACKAGING.md` (this file)
-- Audio setup instructions
+Para distribución, incluye / For distribution, include:
+
+- **Ejecutable / Executable:** `LiveAudioTranslator.exe` (o carpeta completa para onedir)
+- **Configuración / Configuration:** `.env.example` (el usuario lo copia a `.env`)
+- **Documentación / Documentation:** `README.md`, `BUILD_GUIDE.md`
+- **Modelos (opcional) / Models (optional):** Carpeta `models/` si usas CTranslate2 local
+
+### Estructura Recomendada / Recommended Structure
+
+```
+LiveAudioTranslator-Portable/
+├── LiveAudioTranslator.exe
+├── .env.example
+├── README.md
+├── BUILD_GUIDE.md
+└── models/                    (opcional / optional)
+    └── opus-mt-en-es-ct2/
+```
+
+Ver [BUILD_GUIDE.md](BUILD_GUIDE.md) para instrucciones detalladas.
+
+See [BUILD_GUIDE.md](BUILD_GUIDE.md) for detailed instructions.
 
 ## Troubleshooting
 

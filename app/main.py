@@ -37,15 +37,19 @@ def qt_message_handler(msg_type, context, message):
         pass
 
 
+from app.utils.paths import get_base_path
+
+
 def setup_logging():
     """Configure logging for the application."""
-    log_dir = Path("logs")
+    base_path = get_base_path()
+    log_dir = base_path / "logs"
     log_dir.mkdir(exist_ok=True)
     
     # Configure file handler with rotation
     from logging.handlers import RotatingFileHandler
     file_handler = RotatingFileHandler(
-        log_dir / "app.log",
+        str(log_dir / "app.log"),
         maxBytes=10 * 1024 * 1024,  # 10MB
         backupCount=3
     )

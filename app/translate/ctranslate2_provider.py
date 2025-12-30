@@ -14,6 +14,7 @@ except ImportError:
 
 from app.translate.base import TranslateProvider
 from app.core.schemas import TranslationResult
+from app.utils.paths import get_base_path
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class CTranslate2Provider(TranslateProvider):
         Initialize CTranslate2 translation provider.
         
         Args:
-            model_path: Path to the CTranslate2 model directory
+            model_path: Path to the CTranslate2 model directory (can be absolute or relative)
         """
         super().__init__(**kwargs)
         
@@ -36,12 +37,17 @@ class CTranslate2Provider(TranslateProvider):
                 "Install with: pip install ctranslate2 sentencepiece"
             )
         
-        self.model_path = Path(model_path)
+        # Resolve model path relative to base path if not absolute
+        base_path = get_base_path()
+        if Path(model_path).is_absolute():
+            self.model_path = Path(model_path)
+        else:
+            self.model_path = base_path / model_path
         
         if not self.model_path.exists():
             raise ValueError(
-                f"CTranslate2 model not found at {model_path}. "
-                f"Please run the model conversion script first."
+                f"CTranslate2 model not found at {self.model_path}. "
+                f"Please run the model conversion script first or place the model in the correct location."
             )
         
         # Initialize translator

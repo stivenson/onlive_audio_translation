@@ -328,7 +328,9 @@ class MainWindow(QMainWindow):
     def _save_audio_device_to_env(self, device_index: int):
         """Save audio device index to .env file."""
         from pathlib import Path
-        env_path = Path(".env")
+        from app.utils.paths import get_base_path
+        base_path = get_base_path()
+        env_path = base_path / ".env"
         
         # Read existing .env if it exists
         env_lines = []
@@ -354,7 +356,9 @@ class MainWindow(QMainWindow):
     def _save_audio_is_spanish_to_env(self, is_spanish: bool):
         """Save audio_is_spanish setting to .env file."""
         from pathlib import Path
-        env_path = Path(".env")
+        from app.utils.paths import get_base_path
+        base_path = get_base_path()
+        env_path = base_path / ".env"
         
         # Read existing .env if it exists
         env_lines = []
