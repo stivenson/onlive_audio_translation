@@ -76,11 +76,15 @@ class MainWindow(QMainWindow):
         self.panel3 = SummaryPanel("Idea General / Summary", self.settings)
         splitter.addWidget(self.panel3)
         
-        # Panel 4: Questions/Replicas
+        # Panel 4: Conversation Suggestions / Sugerencias
         from app.ui.panels.questions_panel import QuestionsPanel
-        self.panel4 = QuestionsPanel("Questions / Preguntas", self.settings)
+        self.panel4 = QuestionsPanel("Participation Suggestions / Sugerencias", self.settings)
         splitter.addWidget(self.panel4)
-        
+
+        # Initialize verification translator (Capa 2 - final verification layer)
+        from app.translate.verification_layer import RedundantVerificationTranslator
+        self.verification_translator = RedundantVerificationTranslator()
+
         # Set equal sizes for panels
         splitter.setSizes([400, 400, 400, 400])
         
@@ -114,7 +118,11 @@ class MainWindow(QMainWindow):
     
     def on_translation(self, event):
         """Handle translation event."""
-        self.panel2.append_text(event.translated_text)
+        # Capa 2: Verificación final - garantizar que solo texto en español llegue al panel
+        verified_text = self.verification_translator.verify_and_ensure_spanish(
+            event.translated_text
+        )
+        self.panel2.append_text(verified_text)
     
     def on_summary(self, event):
         """Handle summary event."""

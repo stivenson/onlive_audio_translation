@@ -528,7 +528,7 @@ class DeepgramProvider(STTProvider):
                                 self._empty_count = 0
                             
                             # Yield the transcript event
-                            logger.info(f"✅ Yielding transcript: '{text[:100]}', is_final={is_final}, speaker={speaker_id}, confidence={confidence}")
+                            logger.info(f"[OK] Yielding transcript: '{text[:100]}', is_final={is_final}, speaker={speaker_id}, confidence={confidence}")
                             yield TranscriptEvent(
                                 text=text,
                                 transcript_type=TranscriptType.FINAL if is_final else TranscriptType.INTERIM,
@@ -541,9 +541,6 @@ class DeepgramProvider(STTProvider):
                         except Exception as e:
                             logger.error(f"Error parsing Deepgram message: {e}", exc_info=True)
                             continue
-                        else:
-                            # Message doesn't have channel key - might be metadata or other message type
-                            logger.debug(f"Received message without 'channel' key. Keys: {list(transcript.keys())}")
                     except Exception as e:
                         logger.error(f"Error parsing Deepgram message: {e}")
                         continue

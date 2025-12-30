@@ -61,9 +61,20 @@ class QuestionsPanel(QWidget):
     
     def add_question(self, question_en: str, question_es: str):
         """Add a question pair to the list."""
-        # Since questions are now only in Spanish, just show the Spanish version
-        # Use question_es if available, otherwise fallback to question_en (which should also be Spanish)
-        question_text = question_es if question_es else question_en
+        # Format: Spanish on top, English below with separator
+        if question_es and question_en:
+            # Both languages available - show Spanish first, then English
+            question_text = f"[ES] {question_es}\n[EN] {question_en}"
+        elif question_es:
+            # Only Spanish available
+            question_text = f"[ES] {question_es}"
+        elif question_en:
+            # Only English available
+            question_text = f"[EN] {question_en}"
+        else:
+            # No text available
+            return
+        
         item = QListWidgetItem(question_text)
         self.questions_list.addItem(item)
 

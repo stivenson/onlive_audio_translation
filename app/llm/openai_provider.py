@@ -41,11 +41,20 @@ class OpenAIProvider(LLMProvider):
         try:
             # Get JSON schema from Pydantic model
             json_schema = schema.model_json_schema()
-            
+
+            # OpenAI requires a 'name' field in the json_schema
+            schema_name = schema.__name__ if hasattr(schema, '__name__') else "Response"
+
             response = await self.client.beta.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
-                response_format={"type": "json_schema", "json_schema": json_schema},
+                response_format={
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": schema_name,
+                        "schema": json_schema
+                    }
+                },
                 temperature=temperature,
                 max_tokens=max_tokens
             )

@@ -79,7 +79,7 @@ class Settings(BaseModel):
     summary_max_context_minutes: int = 20
     
     # Questions Configuration
-    questions_update_seconds: int = 300  # 5 minutes
+    questions_update_seconds: int = 120  # 2 minutes
     questions_max_count: int = 10
     
     # UI Configuration

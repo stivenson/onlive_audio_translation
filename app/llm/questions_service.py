@@ -1,4 +1,4 @@
-"""Service for generating question suggestions."""
+"""Service for generating conversation participation suggestions."""
 
 import asyncio
 from typing import List, Optional
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class QuestionsService:
-    """Service that generates question suggestions based on conversation."""
+    """Service that generates conversation participation suggestions (statements, comments, or questions)."""
     
     def __init__(self, settings: Settings, llm_router: LLMRouter, memory: ConversationMemory):
         """
@@ -23,7 +23,7 @@ class QuestionsService:
         
         Args:
             settings: Application settings
-            llm_router: LLM router for generating questions
+            llm_router: LLM router for generating suggestions
             memory: Conversation memory
         """
         self.settings = settings
@@ -40,10 +40,10 @@ class QuestionsService:
         
         self.is_running = True
         self._task = asyncio.create_task(self._questions_loop())
-        logger.info("Questions service started")
+        logger.info("Conversation suggestions service started")
     
     async def _questions_loop(self):
-        """Main loop for generating questions."""
+        """Main loop for generating conversation suggestions."""
         while self.is_running:
             try:
                 await asyncio.sleep(self.settings.questions_update_seconds)
@@ -55,21 +55,21 @@ class QuestionsService:
                 recent_transcripts = self.memory.get_recent_transcripts()
                 
                 if len(recent_transcripts) < 3:  # Need at least a few exchanges
-                    logger.debug(f"Not enough transcripts for questions: {len(recent_transcripts)}/3. Waiting...")
+                    logger.debug(f"Not enough transcripts for suggestions: {len(recent_transcripts)}/3. Waiting...")
                     continue
                 
-                logger.info(f"Generating questions from {len(recent_transcripts)} transcripts...")
-                # Generate questions
+                logger.info(f"Generating conversation suggestions from {len(recent_transcripts)} transcripts...")
+                # Generate suggestions
                 await self._generate_questions()
             
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.error(f"Questions loop error: {e}")
+                logger.error(f"Conversation suggestions loop error: {e}")
                 await asyncio.sleep(5)  # Wait before retrying
     
     async def _generate_questions(self):
-        """Generate question suggestions."""
+        """Generate conversation participation suggestions (statements, comments, or questions)."""
         try:
             # Get conversation context
             context_text = self.memory.get_full_context_text(include_translations=True)
@@ -77,31 +77,48 @@ class QuestionsService:
             if not context_text:
                 return
             
-            # Build prompt - questions always in Spanish
-            prompt = f"""Basándote en la siguiente conversación, genera {self.settings.questions_max_count} preguntas o réplicas relevantes en español que ayuden a aclarar, profundizar la comprensión o llenar vacíos en la discusión.
+            # Build prompt - generate relevant statements, comments, or questions in both languages
+            prompt = f"""Based on the following conversation, generate {self.settings.questions_max_count} relevant suggestions in both English and Spanish that someone could use to participate in the conversation.
 
-Para cada pregunta, proporciona:
-1. La pregunta en español
-2. Una breve razón de por qué esta pregunta es relevante
-3. Una puntuación de prioridad (0-10) que indique qué tan importante/urgente es la pregunta
+These suggestions can be:
 
-Conversación:
+1. **AFFIRMATIVE STATEMENTS/COMMENTS** - when there's something to agree with or highlight:
+   - "That's a great point" / "Ese es un gran punto"
+   - "I agree with that approach" / "Estoy de acuerdo con ese enfoque"
+   - "This makes a lot of sense" / "Esto tiene mucho sentido"
+   - "That's exactly right" / "Eso es exactamente correcto"
+
+2. **QUESTIONS/CLARIFICATIONS** - when something needs more information or clarification:
+   - "Could you elaborate on that?" / "¿Podrías elaborar sobre eso?"
+   - "What do you mean by...?" / "¿Qué quieres decir con...?"
+   - "How would that work in practice?" / "¿Cómo funcionaría eso en la práctica?"
+   - "Can you give an example?" / "¿Puedes dar un ejemplo?"
+
+Choose the most appropriate type based on the conversation context. If something is clear and good, suggest statements of agreement. If something is unclear or needs more detail, suggest questions for clarification.
+
+For each suggestion, provide:
+1. The phrase in English (question_en)
+2. The phrase in Spanish (question_es)
+3. A brief reason why this suggestion is relevant
+4. A priority score (0-10) indicating how relevant/useful it is
+
+Conversation:
 {context_text}
 
-Genera las preguntas en formato JSON con esta estructura:
+Generate the suggestions in JSON format with this structure:
 {{
   "questions": [
     {{
-      "question_en": "Pregunta en español",
-      "question_es": "Pregunta en español",
-      "reason": "Por qué esta pregunta es relevante",
+      "question_en": "Phrase in English",
+      "question_es": "Frase en español",
+      "reason": "Why this suggestion is relevant",
       "priority": 7
     }}
   ]
 }}
 
-IMPORTANTE: Todas las preguntas deben estar SOLO en español. Usa el mismo texto en question_en y question_es.
-Solo proporciona el JSON, sin texto adicional."""
+IMPORTANT: Mix statements and questions as appropriate. Provide both English and Spanish versions.
+Only provide the JSON, no additional text."""
             
             # Generate questions using structured output
             from pydantic import BaseModel
@@ -116,18 +133,18 @@ Solo proporciona el JSON, sin texto adicional."""
                 max_tokens=1000
             )
             
-            # Update current questions
+            # Update current questions (now statements/comments)
             self.current_questions = response.questions[:self.settings.questions_max_count]
             
-            logger.info(f"Generated {len(self.current_questions)} questions")
+            logger.info(f"Generated {len(self.current_questions)} conversation suggestions")
             
             # Publish questions event
             await event_bus.publish("questions", self.current_questions)
             
-            logger.info(f"Published {len(self.current_questions)} questions to UI")
+            logger.info(f"Published {len(self.current_questions)} conversation suggestions to UI")
         
         except Exception as e:
-            logger.error(f"Questions generation error: {e}")
+            logger.error(f"Conversation suggestions generation error: {e}")
     
     async def stop(self):
         """Stop questions service."""
@@ -143,13 +160,13 @@ Solo proporciona el JSON, sin texto adicional."""
             except asyncio.CancelledError:
                 pass
         
-        logger.info("Questions service stopped")
+        logger.info("Conversation suggestions service stopped")
     
     def get_current_questions(self) -> List[QuestionPair]:
-        """Get current questions."""
+        """Get current conversation suggestions."""
         return self.current_questions
     
     async def force_update(self):
-        """Force immediate questions update."""
+        """Force immediate suggestions update."""
         await self._generate_questions()
 

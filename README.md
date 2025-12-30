@@ -9,7 +9,7 @@ Python desktop application for real-time system audio translation and analysis, 
 - **Automatic translation**: Translates from English to Spanish (or keeps Spanish if already in Spanish)
 - **Automatic role assignment**: Detects multiple speakers and assigns User_1, User_2, etc.
 - **Contextual summary**: Generates a live summary of the conversation with accumulated context
-- **Question suggestions**: Generates relevant questions/replies in English and Spanish
+- **Participation suggestions**: Generates relevant statements, comments, or questions in English and Spanish to help you engage in the conversation - showing agreement when appropriate or asking for clarification when needed
 - **High availability**: Redundant system with automatic failover between multiple providers
 
 ## Requirements
@@ -135,7 +135,7 @@ Each service can use a different AI model:
 
 - **`TRANSLATION_MODEL_FALLBACK`**: Model used for translating transcripts when LLM is used as fallback (default: `gpt-4o`)
 - **`SUMMARY_MODEL`**: Model used for generating conversation summaries (default: `gpt-4o`)
-- **`QUESTIONS_MODEL`**: Model used for generating relevant questions/replies (default: `gpt-4o`)
+- **`QUESTIONS_MODEL`**: Model used for generating conversation participation suggestions (statements, comments, or questions) (default: `gpt-4o`)
 
 Example configuration:
 ```env
